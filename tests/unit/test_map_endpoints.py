@@ -163,6 +163,7 @@ def test_map_config_returns_expected_keys(client):
     assert "cache" in body
     assert "endpoints" in body
     assert body["endpoints"]["neighborhood_risk"] == "/map/layers/neighborhood-risk"
+    assert body["endpoints"]["neighborhood_route"] == "/map/route/neighborhood"
 
 
 def test_map_layer_endpoint_passes_through_geojson(client):
@@ -213,3 +214,34 @@ def test_layer_failure_isolated_to_requested_layer(monkeypatch: pytest.MonkeyPat
 
         trail = test_client.get("/map/layers/trail-closures")
         assert trail.status_code == 503
+
+
+def test_neighborhood_route_returns_ordered_corridor(client):
+    test_client, _ = client
+    response = test_client.post(
+        "/map/route/neighborhood",
+        json={
+            "from_neighborhood": "Downtown",
+            "to_neighborhood": "Glenora",
+            "hour_offset": 1,
+            "temperature": -12.0,
+            "precipitation": 1.8,
+            "snow_depth": 20.0,
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["from_neighborhood"] == "Downtown"
+    assert body["to_neighborhood"] == "Glenora"
+    assert len(body["ordered_neighborhoods"]) >= 2
+    assert len(body["per_hop_risk_scores"]) == len(body["ordered_neighborhoods"])
+    assert 0.0 <= body["aggregate_corridor_risk"] <= 1.0
+
+
+def test_neighborhood_route_unknown_neighborhood_returns_422(client):
+    test_client, _ = client
+    response = test_client.post(
+        "/map/route/neighborhood",
+        json={"from_neighborhood": "Downtown", "to_neighborhood": "Unknown Place"},
+    )
+    assert response.status_code == 422

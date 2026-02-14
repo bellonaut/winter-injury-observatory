@@ -78,3 +78,9 @@ def test_smoke_map_endpoints(monkeypatch):
         body = risk.json()
         assert body["layer"] == "neighborhood-risk"
         assert body["data"]["type"] == "FeatureCollection"
+
+        route = client.post(
+            "/map/route/neighborhood",
+            json={"from_neighborhood": "Downtown", "to_neighborhood": "Downtown"},
+        )
+        assert route.status_code == 200
