@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any, Callable, Dict, Optional
 
 import pandas as pd
@@ -40,6 +41,11 @@ NEIGHBORHOOD_ALIASES = {
     "glenora": "West Edmonton",
     "mactaggart": "Terwillegar",
 }
+
+
+def _flag_enabled(flag_name: str, default: bool) -> bool:
+    value = os.getenv(flag_name, "true" if default else "false").strip().lower()
+    return value in {"1", "true", "yes", "on"}
 
 
 class NeighborhoodRouteRequest(BaseModel):
@@ -270,6 +276,11 @@ def _build_neighborhood_risk_payload(
 async def map_config():
     """Return map layer configuration and cache telemetry."""
     config = _map_data_service.config()
+    config["feature_flags"] = {
+        "ENABLE_MAP_V1": _flag_enabled("ENABLE_MAP_V1", default=True),
+        "ENABLE_ROUTE_API_V1": _flag_enabled("ENABLE_ROUTE_API_V1", default=True),
+        "ENABLE_SEGMENT_MODEL": _flag_enabled("ENABLE_SEGMENT_MODEL", default=False),
+    }
     config["endpoints"] = {
         "neighborhood_risk": "/map/layers/neighborhood-risk",
         "sidewalks": "/map/layers/sidewalks",
@@ -336,6 +347,9 @@ async def neighborhood_risk_layer(
 @router.post("/route/neighborhood")
 async def neighborhood_route(request: NeighborhoodRouteRequest):
     """Compute a risk-weighted neighborhood corridor."""
+    if not _flag_enabled("ENABLE_ROUTE_API_V1", default=True):
+        raise HTTPException(status_code=404, detail="Route API is disabled.")
+
     risk_layer = _build_neighborhood_risk_payload(
         hour_offset=request.hour_offset,
         force_refresh=request.force_refresh,

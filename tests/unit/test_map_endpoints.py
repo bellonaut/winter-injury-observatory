@@ -162,6 +162,7 @@ def test_map_config_returns_expected_keys(client):
     assert "layers" in body
     assert "cache" in body
     assert "endpoints" in body
+    assert "feature_flags" in body
     assert body["endpoints"]["neighborhood_risk"] == "/map/layers/neighborhood-risk"
     assert body["endpoints"]["neighborhood_route"] == "/map/route/neighborhood"
 
@@ -268,3 +269,13 @@ def test_neighborhood_route_unknown_neighborhood_returns_422(client):
         json={"from_neighborhood": "Downtown", "to_neighborhood": "Unknown Place"},
     )
     assert response.status_code == 422
+
+
+def test_neighborhood_route_respects_feature_flag(client, monkeypatch: pytest.MonkeyPatch):
+    test_client, _ = client
+    monkeypatch.setenv("ENABLE_ROUTE_API_V1", "false")
+    response = test_client.post(
+        "/map/route/neighborhood",
+        json={"from_neighborhood": "Downtown", "to_neighborhood": "Glenora"},
+    )
+    assert response.status_code == 404

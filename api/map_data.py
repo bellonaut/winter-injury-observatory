@@ -3,7 +3,8 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, Callable, Dict, List, Optional, Set
+from collections import defaultdict
+from typing import Any, Callable, DefaultDict, Dict, List, Optional, Set
 
 from api.cache import LayerCache
 from data_connectors.open_data_edmonton import OpenDataEdmontonClient
@@ -48,6 +49,7 @@ class MapDataService:
     ):
         self.cache = LayerCache(ttl_seconds=ttl_seconds)
         self.client_factory = client_factory
+        self.layer_error_count: DefaultDict[str, int] = defaultdict(int)
 
     def _normalize_collection(
         self,
@@ -174,16 +176,23 @@ class MapDataService:
         cached = None if force_refresh else self.cache.get(cache_key, allow_stale=True)
 
         if cached and cached["fresh"]:
+            duration_ms = round((time.perf_counter() - start) * 1000, 2)
+            logger.info(
+                "map_layer layer=%s source=cache cache_event=hit stale=false duration_ms=%.2f",
+                layer_key,
+                duration_ms,
+            )
             return {
                 "layer": layer_key,
                 "data": cached["value"],
                 "meta": {
                     "source": "cache",
+                    "cache_event": "hit",
                     "stale": False,
                     "age_seconds": cached["age_seconds"],
                     "fetched_at": cached["fetched_at"],
                     "ttl_seconds": self.cache.ttl_seconds,
-                    "duration_ms": round((time.perf_counter() - start) * 1000, 2),
+                    "duration_ms": duration_ms,
                 },
                 "errors": [],
             }
@@ -192,33 +201,48 @@ class MapDataService:
         try:
             live_value = self._fetch_live_layer(layer_key)
             live = self.cache.set(cache_key, live_value)
+            duration_ms = round((time.perf_counter() - start) * 1000, 2)
+            logger.info(
+                "map_layer layer=%s source=live cache_event=miss_refresh stale=false duration_ms=%.2f",
+                layer_key,
+                duration_ms,
+            )
             return {
                 "layer": layer_key,
                 "data": live["value"],
                 "meta": {
                     "source": "live",
+                    "cache_event": "miss_refresh",
                     "stale": False,
                     "age_seconds": live["age_seconds"],
                     "fetched_at": live["fetched_at"],
                     "ttl_seconds": self.cache.ttl_seconds,
-                    "duration_ms": round((time.perf_counter() - start) * 1000, 2),
+                    "duration_ms": duration_ms,
                 },
                 "errors": [],
             }
         except Exception as exc:
             self.cache.mark_refresh_failure()
+            self.layer_error_count[layer_key] += 1
             logger.warning("Layer refresh failed for %s: %s", layer_key, exc)
             if stale_cache:
+                duration_ms = round((time.perf_counter() - start) * 1000, 2)
+                logger.warning(
+                    "map_layer layer=%s source=cache cache_event=stale_served stale=true duration_ms=%.2f",
+                    layer_key,
+                    duration_ms,
+                )
                 return {
                     "layer": layer_key,
                     "data": stale_cache["value"],
                     "meta": {
                         "source": "cache",
+                        "cache_event": "stale_served",
                         "stale": True,
                         "age_seconds": stale_cache["age_seconds"],
                         "fetched_at": stale_cache["fetched_at"],
                         "ttl_seconds": self.cache.ttl_seconds,
-                        "duration_ms": round((time.perf_counter() - start) * 1000, 2),
+                        "duration_ms": duration_ms,
                     },
                     "errors": [f"served stale cache because refresh failed: {exc}"],
                 }
@@ -239,5 +263,8 @@ class MapDataService:
             "cache": {
                 "ttl_seconds": self.cache.ttl_seconds,
                 "stats": self.cache.stats(),
+            },
+            "ops": {
+                "layer_error_count": dict(self.layer_error_count),
             },
         }
