@@ -11,6 +11,7 @@ from typing import Dict, List
 import joblib
 import numpy as np
 import pandas as pd
+import sklearn
 from sklearn.compose import ColumnTransformer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, roc_auc_score
@@ -157,6 +158,7 @@ def main():
     metadata = {
         "model_version": "local-demo-v1",
         "created_at": datetime.now(timezone.utc).isoformat(),
+        "sklearn_version": sklearn.__version__,
         "seed": args.seed,
         "days": args.days,
         "feature_columns": FEATURE_COLUMNS,
