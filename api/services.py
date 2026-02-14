@@ -70,10 +70,11 @@ class ModelService:
             logger.error("Model load failed: %s", self.load_error)
 
     def _load_local_model(self):
-        artifact_path = Path(self.model_artifact_path).resolve()
-        if not artifact_path.exists():
+        artifact_path = self._resolve_local_artifact_path()
+        if artifact_path is None:
             raise FileNotFoundError(
-                f"Local model artifact not found at '{artifact_path}'. "
+                f"Local model artifact not found. Checked MODEL_ARTIFACT_PATH='{self.model_artifact_path}' "
+                "and common artifact locations under ./artifacts and /app/artifacts. "
                 "Build it with: python scripts/build_demo_model.py"
             )
 
@@ -92,6 +93,39 @@ class ModelService:
             self.feature_names = None
 
         logger.info("Loaded local model artifact from %s", artifact_path)
+
+    def _resolve_local_artifact_path(self) -> Optional[Path]:
+        configured = Path(self.model_artifact_path)
+        candidates: List[Path] = []
+
+        # Primary configured value (relative to cwd or absolute).
+        candidates.append(configured)
+
+        # If configured as filename-only, also check artifacts directory.
+        if configured.parent in (Path("."), Path("")):
+            candidates.append(Path("artifacts") / configured.name)
+
+        # Standard repository/container defaults.
+        candidates.append(Path("artifacts/demo_model.joblib"))
+        candidates.append(Path("/app/artifacts/demo_model.joblib"))
+
+        seen = set()
+        for candidate in candidates:
+            resolved = candidate.expanduser().resolve()
+            key = str(resolved)
+            if key in seen:
+                continue
+            seen.add(key)
+            if resolved.exists():
+                if str(resolved) != str(configured.expanduser().resolve()):
+                    logger.warning(
+                        "Configured MODEL_ARTIFACT_PATH '%s' not found; using '%s' instead",
+                        self.model_artifact_path,
+                        resolved,
+                    )
+                return resolved
+
+        return None
 
     def _load_mlflow_model(self):
         try:
