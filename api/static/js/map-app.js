@@ -8,6 +8,7 @@ import {
   setGeoJson,
   setLayerVisibility,
   setSelectedNeighborhoodFilter,
+  setCorridorVisibility,
   buildNeighborhoodPopupHtml,
 } from "./map-layers.js";
 
@@ -30,6 +31,15 @@ import {
   setMapConfigSummary,
 } from "./map-controls.js";
 
+import {
+  populateRouteSelectors,
+  readRouteFormValues,
+  renderCorridorResult,
+  renderCorridorComparison,
+  setCorridorRaw,
+  setCorridorStatus,
+} from "./map-panels.js";
+
 const state = {
   map: null,
   popup: null,
@@ -41,6 +51,7 @@ const state = {
     elevationSpots: false,
   },
   latestRiskData: null,
+  latestCorridorResult: null,
   initialBoundsApplied: false,
 };
 
@@ -114,6 +125,91 @@ function maybeFitBounds(featureCollection) {
   }
 }
 
+function neighborhoodNamesFromRiskLayer() {
+  const features = state.latestRiskData?.data?.features || [];
+  return features
+    .map((feature) => feature?.properties?.neighborhood_name)
+    .filter(Boolean);
+}
+
+function corridorGeoJsonFromResult(result) {
+  const turf = window.turf;
+  if (!turf) {
+    return {
+      line: { type: "FeatureCollection", features: [] },
+      points: { type: "FeatureCollection", features: [] },
+    };
+  }
+
+  const names = result?.ordered_neighborhoods || [];
+  const coordinates = [];
+  const pointFeatures = [];
+
+  names.forEach((name, index) => {
+    const feature = riskFeatureFromName(name);
+    if (!feature) {
+      return;
+    }
+
+    try {
+      const centroid = turf.centroid(feature);
+      const coord = centroid?.geometry?.coordinates;
+      if (!Array.isArray(coord) || coord.length < 2) {
+        return;
+      }
+
+      coordinates.push(coord);
+      pointFeatures.push({
+        type: "Feature",
+        geometry: {
+          type: "Point",
+          coordinates: coord,
+        },
+        properties: {
+          rank: index + 1,
+          neighborhood_name: name,
+        },
+      });
+    } catch (_) {
+      // Skip malformed geometries in demo mode.
+    }
+  });
+
+  const lineFeatures =
+    coordinates.length >= 2
+      ? [
+          {
+            type: "Feature",
+            geometry: {
+              type: "LineString",
+              coordinates,
+            },
+            properties: {
+              corridor: "selected",
+            },
+          },
+        ]
+      : [];
+
+  return {
+    line: {
+      type: "FeatureCollection",
+      features: lineFeatures,
+    },
+    points: {
+      type: "FeatureCollection",
+      features: pointFeatures,
+    },
+  };
+}
+
+function renderCorridorOnMap(result) {
+  const geojson = corridorGeoJsonFromResult(result);
+  setGeoJson(state.map, SOURCE_IDS.corridorLine, geojson.line);
+  setGeoJson(state.map, SOURCE_IDS.corridorStops, geojson.points);
+  setCorridorVisibility(state.map, geojson.points.features.length > 0);
+}
+
 async function loadMapConfig() {
   const config = await fetchJson("/map/config");
   setMapConfigSummary(config);
@@ -133,9 +229,15 @@ async function loadNeighborhoodRisk() {
   setRawJson("map-raw-output", payload);
   maybeFitBounds(payload.data);
 
+  populateRouteSelectors(neighborhoodNamesFromRiskLayer());
+
   const selectedName = scenario.neighborhood;
   setSelectedNeighborhoodFilter(state.map, selectedName);
   setSelectedNeighborhoodSummary(riskFeatureFromName(selectedName)?.properties || null);
+
+  if (state.latestCorridorResult) {
+    renderCorridorOnMap(state.latestCorridorResult);
+  }
 
   setStatus(`Map refreshed for +${hourOffset}h offset.`);
 }
@@ -286,12 +388,76 @@ async function runPrediction() {
   setStatus("Prediction complete.");
 }
 
+async function fetchCorridorRoute(fromNeighborhood, toNeighborhood, hourOffset) {
+  const scenario = readScenario();
+  return fetchJson("/map/route/neighborhood", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from_neighborhood: fromNeighborhood,
+      to_neighborhood: toNeighborhood,
+      hour_offset: hourOffset,
+      temperature: scenario.temperature,
+      wind_speed: scenario.wind_speed,
+      wind_chill: scenario.wind_chill,
+      precipitation: scenario.precipitation,
+      snow_depth: scenario.snow_depth,
+      hour: scenario.hour,
+      day_of_week: scenario.day_of_week,
+      month: scenario.month,
+    }),
+  });
+}
+
+async function runCorridorRoute() {
+  const { fromNeighborhood, toNeighborhood } = readRouteFormValues();
+  if (!fromNeighborhood || !toNeighborhood) {
+    setCorridorStatus("Select both origin and destination neighborhoods.", true);
+    return;
+  }
+
+  setCorridorStatus("Computing safest corridor...");
+  const result = await fetchCorridorRoute(fromNeighborhood, toNeighborhood, getHourOffset());
+
+  state.latestCorridorResult = result;
+  renderCorridorResult(result);
+  renderCorridorOnMap(result);
+  setCorridorRaw(result);
+  setCorridorStatus("Corridor computed.");
+}
+
+async function runCorridorCompare() {
+  const { fromNeighborhood, toNeighborhood, compareHourOffset } = readRouteFormValues();
+  if (!fromNeighborhood || !toNeighborhood) {
+    setCorridorStatus("Select both origin and destination neighborhoods.", true);
+    return;
+  }
+
+  setCorridorStatus("Comparing corridor risk by hour...");
+
+  const baseResult = await fetchCorridorRoute(fromNeighborhood, toNeighborhood, getHourOffset());
+  const compareResult = await fetchCorridorRoute(
+    fromNeighborhood,
+    toNeighborhood,
+    compareHourOffset
+  );
+
+  state.latestCorridorResult = baseResult;
+  renderCorridorResult(baseResult);
+  renderCorridorComparison(baseResult, compareResult, compareHourOffset);
+  renderCorridorOnMap(baseResult);
+  setCorridorRaw({ current: baseResult, compare: compareResult });
+  setCorridorStatus("Compare mode complete.");
+}
+
 function wireControls() {
   const slider = document.getElementById("hour-offset");
   const playButton = document.getElementById("timeline-play");
   const refreshButton = document.getElementById("update-map");
   const commuteButton = document.getElementById("load-commute-scenario");
   const predictButton = document.getElementById("run-predict");
+  const routeButton = document.getElementById("run-corridor-route");
+  const compareButton = document.getElementById("run-corridor-compare");
 
   updateHourOffsetLabel(getHourOffset());
 
@@ -332,6 +498,22 @@ function wireControls() {
     }
   });
 
+  routeButton?.addEventListener("click", async () => {
+    try {
+      await runCorridorRoute();
+    } catch (error) {
+      setCorridorStatus(`Corridor request failed: ${error.message}`, true);
+    }
+  });
+
+  compareButton?.addEventListener("click", async () => {
+    try {
+      await runCorridorCompare();
+    } catch (error) {
+      setCorridorStatus(`Compare request failed: ${error.message}`, true);
+    }
+  });
+
   const overlayInputs = [
     "toggle-sidewalks",
     "toggle-winter-routes",
@@ -354,6 +536,7 @@ function wireControls() {
 async function initialize() {
   restoreToken();
   setStatus("Loading map services...");
+  setCorridorStatus("Choose start and end neighborhoods.");
 
   state.map = new maplibregl.Map({
     container: "map",

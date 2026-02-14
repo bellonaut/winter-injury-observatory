@@ -141,6 +141,42 @@
         </section>
 
         <section class="card">
+          <h2>Safest Corridor</h2>
+          <div class="form-grid">
+            <div class="full">
+              <label for="route-from-neighborhood">From Neighborhood</label>
+              <select id="route-from-neighborhood">
+                <option value="">Select origin</option>
+              </select>
+            </div>
+            <div class="full">
+              <label for="route-to-neighborhood">To Neighborhood</label>
+              <select id="route-to-neighborhood">
+                <option value="">Select destination</option>
+              </select>
+            </div>
+            <div class="full">
+              <label for="compare-hour-offset">Compare Hour Offset</label>
+              <input id="compare-hour-offset" type="number" min="0" max="23" value="6" />
+            </div>
+          </div>
+          <div class="controls">
+            <button id="run-corridor-route" class="btn" type="button">Run Safest Corridor</button>
+            <button id="run-corridor-compare" class="btn" type="button">Compare Current vs Hour</button>
+          </div>
+          <p id="corridor-status" class="status">Choose start and end neighborhoods.</p>
+          <p id="corridor-summary" class="context-line">Corridor results will appear here after route computation.</p>
+          <p id="corridor-compare-summary" class="context-line">Compare mode summary will appear here.</p>
+          <ul id="corridor-hops" class="notes">
+            <li>Corridor hop ranks and risk levels will be listed here.</li>
+          </ul>
+          <details>
+            <summary>Show raw corridor response</summary>
+            <pre id="corridor-raw-output" class="codebox">{}</pre>
+          </details>
+        </section>
+
+        <section class="card">
           <h2>Risk Interpretation</h2>
           <span id="risk-pill" class="pill low">Awaiting Input</span>
           <p id="result-hero" class="result-hero">Run API prediction to generate narrative guidance.</p>

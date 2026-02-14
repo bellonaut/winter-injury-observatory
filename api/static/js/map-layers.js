@@ -6,6 +6,8 @@ export const SOURCE_IDS = {
   winterRoutes: "winter-routes-source",
   trailClosures: "trail-closures-source",
   elevationSpots: "elevation-spots-source",
+  corridorLine: "corridor-line-source",
+  corridorStops: "corridor-stops-source",
 };
 
 export const LAYER_IDS = {
@@ -16,6 +18,9 @@ export const LAYER_IDS = {
   winterRoutes: "winter-routes-layer",
   trailClosures: "trail-closures-layer",
   elevationSpots: "elevation-spots-layer",
+  corridorLine: "corridor-line-layer",
+  corridorStops: "corridor-stops-layer",
+  corridorLabels: "corridor-labels-layer",
 };
 
 export const OVERLAYS = {
@@ -186,6 +191,52 @@ export function ensureLayers(map) {
       },
     });
   }
+
+  if (!map.getLayer(LAYER_IDS.corridorLine)) {
+    map.addLayer({
+      id: LAYER_IDS.corridorLine,
+      type: "line",
+      source: SOURCE_IDS.corridorLine,
+      layout: { visibility: "none" },
+      paint: {
+        "line-color": "#163a6a",
+        "line-width": 4,
+        "line-opacity": 0.88,
+      },
+    });
+  }
+
+  if (!map.getLayer(LAYER_IDS.corridorStops)) {
+    map.addLayer({
+      id: LAYER_IDS.corridorStops,
+      type: "circle",
+      source: SOURCE_IDS.corridorStops,
+      layout: { visibility: "none" },
+      paint: {
+        "circle-radius": 6,
+        "circle-color": "#163a6a",
+        "circle-stroke-width": 2,
+        "circle-stroke-color": "#fff",
+      },
+    });
+  }
+
+  if (!map.getLayer(LAYER_IDS.corridorLabels)) {
+    map.addLayer({
+      id: LAYER_IDS.corridorLabels,
+      type: "symbol",
+      source: SOURCE_IDS.corridorStops,
+      layout: {
+        visibility: "none",
+        "text-field": ["concat", "#", ["to-string", ["get", "rank"]]],
+        "text-offset": [0, 1.3],
+        "text-size": 11,
+      },
+      paint: {
+        "text-color": "#0b2140",
+      },
+    });
+  }
 }
 
 export function setGeoJson(map, sourceId, featureCollection) {
@@ -213,6 +264,12 @@ export function setSelectedNeighborhoodFilter(map, neighborhoodName) {
     ["coalesce", ["get", "neighborhood_name"], ""],
     neighborhoodName || "",
   ]);
+}
+
+export function setCorridorVisibility(map, visible) {
+  setLayerVisibility(map, LAYER_IDS.corridorLine, visible);
+  setLayerVisibility(map, LAYER_IDS.corridorStops, visible);
+  setLayerVisibility(map, LAYER_IDS.corridorLabels, visible);
 }
 
 export function buildNeighborhoodPopupHtml(feature) {

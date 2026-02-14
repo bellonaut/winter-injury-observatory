@@ -87,6 +87,10 @@ def test_static_assets_served():
         assert js.status_code == 200
         assert "loadNeighborhoodRisk" in js.text
 
+        panels = client.get("/static/js/map-panels.js")
+        assert panels.status_code == 200
+        assert "renderCorridorResult" in panels.text
+
 
 def test_health_check():
     with TestClient(app) as client:
