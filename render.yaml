@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: winter-injury-observatory
+    env: docker
+    dockerfilePath: ./docker/Dockerfile.api
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: MODEL_BACKEND
+        value: local
+      - key: MODEL_ARTIFACT_PATH
+        value: artifacts/demo_model.joblib
+      - key: DEMO_API_TOKEN
+        sync: false
+      - key: API_SECRET_KEY
+        sync: false

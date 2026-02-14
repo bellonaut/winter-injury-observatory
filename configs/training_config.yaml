@@ -1,0 +1,48 @@
+# XGBoost Model Training Configuration
+
+experiment_name: "winter-injury-risk"
+
+model_params:
+  objective: "binary:logistic"
+  max_depth: 6
+  learning_rate: 0.1
+  n_estimators: 100
+  min_child_weight: 1
+  gamma: 0
+  subsample: 0.8
+  colsample_bytree: 0.8
+  scale_pos_weight: 1
+  random_state: 42
+
+training:
+  test_size: 0.2
+  validation_size: 0.1
+  stratify: true
+  cross_validation_folds: 5
+
+features:
+  exclude:
+    - incident_id
+    - date
+    - observation_time
+    - created_at
+  
+  categorical:
+    - neighborhood
+    - condition
+    - age_group
+
+target:
+  name: "high_risk"
+  type: "binary"
+
+mlflow:
+  tracking_uri: "http://localhost:5000"
+  artifact_location: "s3://mlflow-artifacts"
+  log_models: true
+  log_artifacts: true
+
+monitoring:
+  enable_drift_detection: true
+  drift_threshold: 0.3
+  enable_performance_tracking: true

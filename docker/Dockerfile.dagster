@@ -1,0 +1,27 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements
+COPY requirements.txt .
+COPY requirements-runtime.txt .
+COPY requirements-mlops.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy code
+COPY dagster_project/ ./dagster_project/
+COPY data_connectors/ ./data_connectors/
+COPY synthetic_data/ ./synthetic_data/
+
+# Expose ports
+EXPOSE 3000
+
+# Run Dagster
+CMD ["dagster", "dev", "-h", "0.0.0.0", "-p", "3000", "-f", "dagster_project/definitions.py"]
