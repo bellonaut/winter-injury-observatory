@@ -15,6 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from api import map_routes
 from api.models import BatchPredictionRequest, PredictionRequest, PredictionResponse
 from api.services import DatabaseService, ModelService
 
@@ -37,6 +38,7 @@ async def lifespan(_app: FastAPI):
     await model_service.load_model()
     if model_service.model is None:
         logger.warning("Model unavailable: %s", model_service.load_error)
+    map_routes.configure_map_services(lambda: model_service)
 
     yield
 
@@ -58,6 +60,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.include_router(map_routes.router)
 
 # Security
 security = HTTPBearer(auto_error=False)
