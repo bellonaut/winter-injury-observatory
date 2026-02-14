@@ -32,11 +32,19 @@ class OpenDataEdmontonClient:
     """Client for City of Edmonton Open Data Portal"""
     
     BASE_URL = "https://data.edmonton.ca/resource"
+    METADATA_URL = "https://data.edmonton.ca/api/views"
     
     # Dataset identifiers (these are examples - actual IDs may differ)
     INJURY_DATASET = "emergency-calls.json"  # Example dataset
     DEMOGRAPHICS_DATASET = "census-data.json"
     INFRASTRUCTURE_DATASET = "sidewalk-conditions.json"
+
+    # Geospatial datasets used by map endpoints
+    NEIGHBORHOOD_BOUNDARIES_DATASET = "xu6q-xcmj"
+    CURB_SIDEWALK_DATASET = "4feb-tv8p"
+    WINTER_ROUTE_STATUS_DATASET = "8pdx-hfxi"
+    TRAIL_CLOSURES_DATASET = "k4mi-dkvi"
+    ELEVATION_SPOT_DATASET = "tarx-cg5m"
     
     def __init__(
         self,
@@ -93,6 +101,72 @@ class OpenDataEdmontonClient:
         except Exception as e:
             logger.error(f"Error making request: {e}")
             return []
+
+    def get_dataset_geojson(
+        self,
+        dataset_id: str,
+        limit: int = 50000,
+        where: Optional[str] = None,
+        order_by: Optional[str] = None,
+    ) -> Dict:
+        """
+        Fetch a Socrata dataset as GeoJSON.
+
+        Args:
+            dataset_id: 4x4 Socrata dataset identifier.
+            limit: Maximum number of features to return.
+            where: Optional SoQL where clause.
+            order_by: Optional SoQL order by clause.
+
+        Returns:
+            GeoJSON FeatureCollection dict. Returns empty FeatureCollection on failure.
+        """
+        params: Dict[str, str | int] = {"$limit": max(1, int(limit))}
+        if where:
+            params["$where"] = where
+        if order_by:
+            params["$order"] = order_by
+
+        url = f"{self.BASE_URL}/{dataset_id}.geojson"
+        try:
+            response = self.client.get(url, params=params)
+            response.raise_for_status()
+            payload = response.json()
+            if payload.get("type") != "FeatureCollection":
+                logger.warning(
+                    "Dataset %s returned non-FeatureCollection payload; coercing to empty collection",
+                    dataset_id,
+                )
+                return {"type": "FeatureCollection", "features": []}
+            return payload
+        except httpx.HTTPError as exc:
+            logger.error("HTTP error fetching GeoJSON dataset %s: %s", dataset_id, exc)
+            return {"type": "FeatureCollection", "features": []}
+        except Exception as exc:
+            logger.error("Error fetching GeoJSON dataset %s: %s", dataset_id, exc)
+            return {"type": "FeatureCollection", "features": []}
+
+    def get_dataset_metadata(self, dataset_id: str) -> Dict:
+        """
+        Fetch dataset metadata from Socrata views API.
+
+        Args:
+            dataset_id: 4x4 Socrata dataset identifier.
+
+        Returns:
+            Metadata dict or empty dict if request fails.
+        """
+        url = f"{self.METADATA_URL}/{dataset_id}.json"
+        try:
+            response = self.client.get(url)
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPError as exc:
+            logger.error("HTTP error fetching metadata for %s: %s", dataset_id, exc)
+            return {}
+        except Exception as exc:
+            logger.error("Error fetching metadata for %s: %s", dataset_id, exc)
+            return {}
     
     def get_injury_data(
         self,
