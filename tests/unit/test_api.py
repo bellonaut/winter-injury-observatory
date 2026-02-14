@@ -39,6 +39,20 @@ WARM_PAYLOAD = {
     "infrastructure_quality": 0.70,
 }
 
+OVERNIGHT_DEEP_FREEZE_PAYLOAD = {
+    "temperature": -22.0,
+    "wind_speed": 30.0,
+    "wind_chill": -35.0,
+    "precipitation": 0.3,
+    "snow_depth": 10.0,
+    "hour": 22,
+    "day_of_week": 6,
+    "month": 2,
+    "neighborhood": "Jasper Place",
+    "ses_index": 0.33,
+    "infrastructure_quality": 0.40,
+}
+
 
 def auth_header(token: str = "test-token") -> dict:
     return {"Authorization": f"Bearer {token}"}
@@ -120,3 +134,16 @@ def test_predict_warm_conditions_not_high_risk():
         body = response.json()
         assert body["probability"] < 0.5
         assert body["risk_level"] in {"low", "medium"}
+
+
+def test_predict_overnight_deep_freeze_not_forced_critical():
+    with TestClient(app) as client:
+        response = client.post(
+            "/predict",
+            json=OVERNIGHT_DEEP_FREEZE_PAYLOAD,
+            headers=auth_header(),
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["probability"] <= 0.8
+        assert body["risk_level"] in {"medium", "high"}

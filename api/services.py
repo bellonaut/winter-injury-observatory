@@ -172,6 +172,7 @@ class ModelService:
         precipitation = float(row.get("precipitation", 0.0))
         snow_depth = float(row.get("snow_depth", 0.0))
         hour = int(row.get("hour", 12))
+        month = int(row.get("month", 1))
         ses_index = float(row.get("ses_index", 0.5))
         infrastructure_quality = float(row.get("infrastructure_quality", 0.7))
 
@@ -199,8 +200,15 @@ class ModelService:
         if wind_chill < -20:
             score += 0.10
 
-        if hour in {7, 8, 17, 18}:
+        if hour in {7, 8, 9, 16, 17, 18}:
             score += 0.08
+        elif hour >= 22 or hour <= 5:
+            score -= 0.08
+
+        if month in {11, 12, 1, 2, 3}:
+            score += 0.03
+        else:
+            score -= 0.08
 
         if infrastructure_quality < 0.6:
             score += 0.08
@@ -215,9 +223,20 @@ class ModelService:
         wind_chill = float(row.get("wind_chill", temperature))
         precipitation = float(row.get("precipitation", 0.0))
         snow_depth = float(row.get("snow_depth", 0.0))
+        hour = int(row.get("hour", 12))
 
         hazard = self._hazard_score(row)
-        blended = 0.65 * float(model_probability) + 0.35 * hazard
+        blended = 0.45 * float(model_probability) + 0.55 * hazard
+
+        # Damp overconfident model spikes when domain hazard evidence is moderate.
+        if model_probability >= 0.90 and hazard < 0.55:
+            blended = min(blended, 0.74)
+        elif model_probability >= 0.90 and hazard < 0.70:
+            blended = min(blended, 0.83)
+
+        # Overnight periods have materially lower exposure volume.
+        if hour >= 22 or hour <= 5:
+            blended = min(blended, 0.72)
 
         # Warm, low-snow conditions should not produce high winter injury risk.
         if temperature >= 10 and wind_chill >= 0 and snow_depth < 3:
