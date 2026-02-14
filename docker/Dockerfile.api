@@ -17,6 +17,7 @@ RUN pip install --no-cache-dir -r requirements-runtime.txt
 COPY api/ ./api/
 COPY ml_pipeline/ ./ml_pipeline/
 COPY data_connectors/ ./data_connectors/
+COPY synthetic_data/ ./synthetic_data/
 COPY artifacts/ ./artifacts/
 
 # Expose port
