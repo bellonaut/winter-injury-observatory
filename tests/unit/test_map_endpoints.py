@@ -202,6 +202,29 @@ def test_neighborhood_risk_rejects_out_of_range_hour_offset(client):
     assert response.status_code == 422
 
 
+def test_neighborhood_risk_hour_offset_changes_distribution(client):
+    test_client, _ = client
+    base = test_client.get(
+        "/map/layers/neighborhood-risk",
+        params={"hour_offset": 0, "hour": 7, "precipitation": 2.0},
+    )
+    shifted = test_client.get(
+        "/map/layers/neighborhood-risk",
+        params={"hour_offset": 23, "hour": 7, "precipitation": 2.0},
+    )
+
+    assert base.status_code == 200
+    assert shifted.status_code == 200
+
+    base_probabilities = [
+        feature["properties"]["probability"] for feature in base.json()["data"]["features"]
+    ]
+    shifted_probabilities = [
+        feature["properties"]["probability"] for feature in shifted.json()["data"]["features"]
+    ]
+    assert base_probabilities != shifted_probabilities
+
+
 def test_layer_failure_isolated_to_requested_layer(monkeypatch: pytest.MonkeyPatch):
     fake_model = FakeModelService()
     failing_map = FakeMapDataService(fail_layers=["trail_closures"])

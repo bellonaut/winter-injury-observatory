@@ -35,6 +35,10 @@ def test_smoke_health_docs_predict():
         docs = client.get("/docs")
         assert docs.status_code == 200
 
+        map_config = client.get("/map/config")
+        assert map_config.status_code == 200
+        assert "layers" in map_config.json()
+
         pred = client.post(
             "/predict",
             json=PAYLOAD,
