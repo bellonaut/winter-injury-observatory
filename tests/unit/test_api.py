@@ -25,6 +25,20 @@ PAYLOAD = {
     "infrastructure_quality": 0.70,
 }
 
+WARM_PAYLOAD = {
+    "temperature": 20.0,
+    "wind_speed": 0.0,
+    "wind_chill": 5.0,
+    "precipitation": 1.0,
+    "snow_depth": 5.0,
+    "hour": 13,
+    "day_of_week": 1,
+    "month": 1,
+    "neighborhood": "Downtown",
+    "ses_index": 0.45,
+    "infrastructure_quality": 0.70,
+}
+
 
 def auth_header(token: str = "test-token") -> dict:
     return {"Authorization": f"Bearer {token}"}
@@ -93,3 +107,16 @@ def test_predict_success():
         assert "prediction" in body
         assert "probability" in body
         assert "risk_level" in body
+
+
+def test_predict_warm_conditions_not_high_risk():
+    with TestClient(app) as client:
+        response = client.post(
+            "/predict",
+            json=WARM_PAYLOAD,
+            headers=auth_header(),
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["probability"] < 0.5
+        assert body["risk_level"] in {"low", "medium"}

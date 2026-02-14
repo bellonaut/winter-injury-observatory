@@ -164,6 +164,71 @@ class ModelService:
             return "high"
         return "critical"
 
+    @staticmethod
+    def _hazard_score(row: pd.Series) -> float:
+        """Domain-informed hazard score to stabilize model extrapolations."""
+        temperature = float(row.get("temperature", 0.0))
+        wind_chill = float(row.get("wind_chill", temperature))
+        precipitation = float(row.get("precipitation", 0.0))
+        snow_depth = float(row.get("snow_depth", 0.0))
+        hour = int(row.get("hour", 12))
+        ses_index = float(row.get("ses_index", 0.5))
+        infrastructure_quality = float(row.get("infrastructure_quality", 0.7))
+
+        score = 0.02
+
+        # Freeze-thaw and deep-freeze risk bands.
+        if -15 <= temperature <= -2:
+            score += 0.28
+        elif -25 <= temperature < -15:
+            score += 0.16
+        elif temperature > 6:
+            score -= 0.10
+
+        # Wet icy surfaces are more dangerous near freezing than warm rain.
+        if precipitation > 0.5 and temperature < 2:
+            score += 0.20
+        elif precipitation > 0.5 and temperature >= 6:
+            score += 0.04
+
+        if snow_depth >= 10:
+            score += 0.12
+        elif snow_depth <= 3:
+            score -= 0.04
+
+        if wind_chill < -20:
+            score += 0.10
+
+        if hour in {7, 8, 17, 18}:
+            score += 0.08
+
+        if infrastructure_quality < 0.6:
+            score += 0.08
+        if ses_index < 0.5:
+            score += 0.04
+
+        return max(0.01, min(0.95, score))
+
+    def _apply_domain_guardrails(self, row: pd.Series, model_probability: float) -> float:
+        """Blend model output with domain constraints for physically plausible risk."""
+        temperature = float(row.get("temperature", 0.0))
+        wind_chill = float(row.get("wind_chill", temperature))
+        precipitation = float(row.get("precipitation", 0.0))
+        snow_depth = float(row.get("snow_depth", 0.0))
+
+        hazard = self._hazard_score(row)
+        blended = 0.65 * float(model_probability) + 0.35 * hazard
+
+        # Warm, low-snow conditions should not produce high winter injury risk.
+        if temperature >= 10 and wind_chill >= 0 and snow_depth < 3:
+            blended = min(blended, 0.18)
+        elif temperature >= 6 and wind_chill >= -1 and snow_depth < 8:
+            blended = min(blended, 0.32)
+        elif temperature >= 3 and precipitation <= 1.5 and snow_depth < 6:
+            blended = min(blended, 0.42)
+
+        return max(0.0, min(1.0, blended))
+
     def _predict_probability(self, df: pd.DataFrame) -> List[float]:
         if hasattr(self.model, "predict_proba"):
             probabilities = self.model.predict_proba(df)
@@ -179,12 +244,16 @@ class ModelService:
         if self.model is None:
             raise ValueError(self.load_error or "Model not loaded")
 
-        prediction = int(self.model.predict(df)[0])
-        probability = self._predict_probability(df)[0]
+        model_prediction = int(self.model.predict(df)[0])
+        raw_probability = self._predict_probability(df)[0]
+        probability = self._apply_domain_guardrails(df.iloc[0], raw_probability)
+        prediction = int(probability >= 0.5)
         return {
             "prediction": prediction,
             "probability": probability,
             "risk_level": self._risk_level(probability),
+            "raw_prediction": model_prediction,
+            "raw_probability": float(raw_probability),
         }
 
     def batch_predict(self, df: pd.DataFrame) -> List[Dict[str, Any]]:
@@ -192,16 +261,19 @@ class ModelService:
         if self.model is None:
             raise ValueError(self.load_error or "Model not loaded")
 
-        predictions = self.model.predict(df)
-        probabilities = self._predict_probability(df)
+        raw_predictions = self.model.predict(df)
+        raw_probabilities = self._predict_probability(df)
 
         results: List[Dict[str, Any]] = []
-        for pred, prob in zip(predictions, probabilities):
+        for idx, (pred, prob) in enumerate(zip(raw_predictions, raw_probabilities)):
+            adjusted_prob = self._apply_domain_guardrails(df.iloc[idx], float(prob))
             results.append(
                 {
-                    "prediction": int(pred),
-                    "probability": float(prob),
-                    "risk_level": self._risk_level(float(prob)),
+                    "prediction": int(adjusted_prob >= 0.5),
+                    "probability": float(adjusted_prob),
+                    "risk_level": self._risk_level(float(adjusted_prob)),
+                    "raw_prediction": int(pred),
+                    "raw_probability": float(prob),
                 }
             )
         return results
