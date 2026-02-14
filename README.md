@@ -12,6 +12,38 @@ This repository is optimized for recruiter review: reproducible startup, determi
 - Training and pipeline modules: `ml_pipeline/`, `dagster_project/`
 - Infra-as-code (documented path): `terraform/`
 
+## Frontend Map Stack
+
+- Map engine: `MapLibre GL JS` loaded via CDN for static frontend compatibility.
+- Spatial utilities: `Turf.js` loaded via CDN for client-side map calculations.
+- No frontend build step required for deployment on the current single Render service.
+
+## Map Data Sources (Edmonton Open Data)
+
+- Neighborhood boundaries: `xu6q-xcmj`
+- Curb / sidewalk network: `4feb-tv8p`
+- Winter route status: `8pdx-hfxi`
+- Trail closures: `k4mi-dkvi`
+- Elevation spots: `tarx-cg5m`
+
+Map layers are fetched live with an hourly TTL cache and stale fallback.
+
+## API Surface (Map + Prediction)
+
+- Public read endpoints:
+  - `GET /map/config`
+  - `GET /map/layers/neighborhood-risk`
+  - `GET /map/layers/sidewalks`
+  - `GET /map/layers/winter-routes`
+  - `GET /map/layers/trail-closures`
+  - `GET /map/layers/elevation-spots`
+  - `POST /map/route/neighborhood`
+- Token-protected endpoints:
+  - `POST /predict`
+  - `POST /batch_predict`
+  - `GET /model/metrics`
+  - `POST /model/reload`
+
 ## Live Demo
 
 - Landing page: `https://<your-render-service>.onrender.com/`
@@ -38,6 +70,35 @@ curl -X POST "https://<your-render-service>.onrender.com/predict" \
     "infrastructure_quality": 0.70
   }'
 ```
+
+Route endpoint example:
+
+```bash
+curl -X POST "https://<your-render-service>.onrender.com/map/route/neighborhood" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "from_neighborhood": "Downtown",
+    "to_neighborhood": "Terwillegar",
+    "hour_offset": 4,
+    "temperature": -12.0,
+    "precipitation": 2.1,
+    "snow_depth": 21.0
+  }'
+```
+
+## Calibration Disclosure
+
+- `raw_probability` is the direct model output from the bundled classifier.
+- `probability` is the adjusted value after domain guardrails (seasonality, overnight exposure, and warm-condition dampening).
+- Map tooltips and API responses expose both values plus `calibration_delta`.
+
+## Reviewer Walkthrough (2-3 minutes)
+
+1. Open `/` and confirm map + controls load.
+2. Toggle overlays (sidewalks and winter routes) to validate layer fetch and rendering.
+3. Move the 24h slider and note top-risk neighborhood changes.
+4. Run `/predict` from the UI using demo token and inspect raw response.
+5. Run Safest Corridor + compare mode to inspect route sequence and risk delta narrative.
 
 ## Run in Codespaces
 
@@ -98,6 +159,9 @@ Build from `docker/Dockerfile.api` and set these environment variables in Render
 - `DEMO_API_TOKEN=<your-demo-token>`
 - `API_SECRET_KEY=<optional-fallback-token>`
 - `DATABASE_URL` optional for demo mode
+- `ENABLE_MAP_V1=true`
+- `ENABLE_ROUTE_API_V1=true`
+- `ENABLE_SEGMENT_MODEL=false`
 
 Health check path:
 
@@ -113,6 +177,12 @@ Health check path:
   - Local bundled model artifact
   - Optional DB dependency
   - Single-service landing page + API deployment
+
+## Known Limits (Map v1)
+
+- Corridor routing is neighborhood-level approximation, not sidewalk segment A* routing.
+- Elevation data is spot-based, not a complete surface raster.
+- Risk model is synthetic-data-based and intended for portfolio demonstration, not operational dispatch.
 
 ## Common Commands
 

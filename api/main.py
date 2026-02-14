@@ -14,7 +14,9 @@ from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.staticfiles import StaticFiles
 
+from api import map_routes
 from api.models import BatchPredictionRequest, PredictionRequest, PredictionResponse
 from api.services import DatabaseService, ModelService
 
@@ -27,6 +29,14 @@ LANDING_PAGE_PATH = Path(__file__).parent / "static" / "index.html"
 model_service: Optional[ModelService] = None
 
 
+def _flag_enabled(flag_name: str, default: bool) -> bool:
+    value = os.getenv(flag_name, "true" if default else "false").strip().lower()
+    return value in {"1", "true", "yes", "on"}
+
+
+MAP_V1_ENABLED = _flag_enabled("ENABLE_MAP_V1", default=True)
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     """Lifecycle management."""
@@ -37,6 +47,8 @@ async def lifespan(_app: FastAPI):
     await model_service.load_model()
     if model_service.model is None:
         logger.warning("Model unavailable: %s", model_service.load_error)
+    if MAP_V1_ENABLED:
+        map_routes.configure_map_services(lambda: model_service)
 
     yield
 
@@ -58,6 +70,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
+if MAP_V1_ENABLED:
+    app.include_router(map_routes.router)
 
 # Security
 security = HTTPBearer(auto_error=False)

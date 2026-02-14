@@ -24,3 +24,7 @@ pyyaml==6.0.1
 click==8.1.7
 httpx==0.26.0
 requests==2.31.0
+
+# Geospatial and routing
+shapely==2.0.2
+networkx==3.4.2

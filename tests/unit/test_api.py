@@ -64,6 +64,8 @@ def test_landing_page():
         assert response.status_code == 200
         assert "Winter Injury Risk" in response.text
         assert "/docs" in response.text
+        assert 'id="map"' in response.text
+        assert "/static/js/map-app.js" in response.text
 
 
 def test_api_info():
@@ -73,6 +75,21 @@ def test_api_info():
         data = response.json()
         assert data["status"] == "operational"
         assert data["docs"] == "/docs"
+
+
+def test_static_assets_served():
+    with TestClient(app) as client:
+        css = client.get("/static/css/map.css")
+        assert css.status_code == 200
+        assert "map-frame" in css.text
+
+        js = client.get("/static/js/map-app.js")
+        assert js.status_code == 200
+        assert "loadNeighborhoodRisk" in js.text
+
+        panels = client.get("/static/js/map-panels.js")
+        assert panels.status_code == 200
+        assert "renderCorridorResult" in panels.text
 
 
 def test_health_check():

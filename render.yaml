@@ -14,3 +14,9 @@ services:
         sync: false
       - key: API_SECRET_KEY
         sync: false
+      - key: ENABLE_MAP_V1
+        value: "true"
+      - key: ENABLE_ROUTE_API_V1
+        value: "true"
+      - key: ENABLE_SEGMENT_MODEL
+        value: "false"

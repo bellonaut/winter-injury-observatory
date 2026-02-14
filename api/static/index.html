@@ -4,547 +4,213 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Winter Injury Risk & Equity Observatory</title>
-  <style>
-    :root {
-      --bg: #ece6d9;
-      --ink: #13223a;
-      --muted: #4e5f7d;
-      --panel: #fcfaf4;
-      --line: #d5ccbc;
-      --primary: #0f6b7d;
-      --ok: #1b7f3a;
-      --warn: #ba7a0b;
-      --high: #b04a18;
-      --critical: #9c1d2e;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      color: var(--ink);
-      font-family: "Avenir Next", "Segoe UI", "Gill Sans", sans-serif;
-      background:
-        radial-gradient(1100px 600px at 95% -10%, #dbe8f1 0%, transparent 58%),
-        radial-gradient(900px 420px at -5% -12%, #f7dccf 0%, transparent 56%),
-        var(--bg);
-      min-height: 100vh;
-    }
-
-    .wrap {
-      width: min(1080px, calc(100% - 32px));
-      margin: 28px auto 56px;
-    }
-
-    .hero {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      padding: 28px;
-      box-shadow: 0 18px 36px rgba(15, 30, 48, 0.08);
-    }
-
-    h1 {
-      margin: 0 0 12px;
-      line-height: 1.05;
-      letter-spacing: -0.02em;
-      font-size: clamp(1.9rem, 4vw, 3.2rem);
-      max-width: 15ch;
-    }
-
-    p {
-      margin: 0 0 12px;
-      color: var(--muted);
-      line-height: 1.56;
-    }
-
-    .links {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-top: 16px;
-    }
-
-    .btn {
-      border: 1px solid var(--line);
-      background: #fff;
-      color: var(--ink);
-      text-decoration: none;
-      font-weight: 700;
-      padding: 10px 14px;
-      border-radius: 10px;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .btn.primary {
-      background: var(--primary);
-      color: #fff;
-      border-color: transparent;
-    }
-
-    .grid {
-      margin-top: 16px;
-      display: grid;
-      grid-template-columns: 1.15fr 0.85fr;
-      gap: 14px;
-    }
-
-    .card {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 16px;
-    }
-
-    .card h2 {
-      margin: 0 0 10px;
-      font-size: 1.08rem;
-      letter-spacing: 0.01em;
-    }
-
-    .form-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
-    }
-
-    .full {
-      grid-column: 1 / -1;
-    }
-
-    label {
-      font-size: 0.86rem;
-      font-weight: 700;
-      color: #223654;
-      display: block;
-      margin-bottom: 4px;
-    }
-
-    input, select {
-      width: 100%;
-      border: 1px solid #c8bda8;
-      border-radius: 8px;
-      padding: 9px 10px;
-      background: #fff;
-      color: var(--ink);
-      font-size: 0.95rem;
-    }
-
-    .submit-row {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      margin-top: 10px;
-      flex-wrap: wrap;
-    }
-
-    .status {
-      font-size: 0.9rem;
-      color: var(--muted);
-    }
-
-    .status.error {
-      color: #8b1e1e;
-      font-weight: 700;
-    }
-
-    .meter-shell {
-      margin: 12px 0 4px;
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      padding: 4px;
-      background: #efe7d6;
-    }
-
-    .meter-track {
-      width: 100%;
-      height: 16px;
-      border-radius: 999px;
-      background: linear-gradient(90deg, var(--ok) 0%, var(--warn) 52%, var(--critical) 100%);
-      overflow: hidden;
-      position: relative;
-    }
-
-    .meter-fill {
-      position: absolute;
-      inset: 0 auto 0 0;
-      width: 0%;
-      background: rgba(8, 23, 45, 0.28);
-      border-right: 2px solid #fff;
-      transition: width 0.35s ease;
-    }
-
-    .risk-line {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      margin-top: 8px;
-      flex-wrap: wrap;
-    }
-
-    .pill {
-      border-radius: 999px;
-      padding: 4px 10px;
-      font-size: 0.78rem;
-      font-weight: 800;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      border: 1px solid transparent;
-    }
-
-    .pill.low {
-      color: #0d5427;
-      background: #ddefde;
-      border-color: #abcfb3;
-    }
-
-    .pill.medium {
-      color: #784d05;
-      background: #f7eac7;
-      border-color: #dfc486;
-    }
-
-    .pill.high {
-      color: #8f3613;
-      background: #f8dacc;
-      border-color: #d8a38d;
-    }
-
-    .pill.critical {
-      color: #8a1221;
-      background: #f3ccd2;
-      border-color: #d6929f;
-    }
-
-    .result-hero {
-      font-weight: 800;
-      letter-spacing: -0.01em;
-      font-size: 1.26rem;
-      margin: 2px 0 10px;
-      min-height: 1.4em;
-    }
-
-    .list {
-      margin: 8px 0 0;
-      padding-left: 18px;
-      color: #23395b;
-      line-height: 1.5;
-      font-size: 0.95rem;
-    }
-
-    .mono {
-      margin-top: 10px;
-      border-radius: 10px;
-      background: #f0e8d8;
-      border: 1px solid #d9cdae;
-      padding: 10px;
-      font-size: 0.82rem;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      overflow: auto;
-      max-height: 160px;
-    }
-
-    @media (max-width: 900px) {
-      .grid {
-        grid-template-columns: 1fr;
-      }
-      .form-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-  </style>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
+  <link rel="stylesheet" href="/static/css/map.css" />
 </head>
 <body>
-  <main class="wrap">
-    <section class="hero">
-      <h1>Urban Winter Injury Risk & Equity Observatory</h1>
-      <p>
-        This interface translates model output into practical risk language for planning, communication, and intervention.
-      </p>
-      <p>
-        Use the interactive scenario panel below to test conditions and get a clear risk level, confidence, and next-step guidance.
-      </p>
-      <div class="links">
+  <main class="site">
+    <header class="site-header">
+      <div>
+        <h1>Urban Winter Injury Risk & Equity Observatory</h1>
+        <p>Map-first interface for neighborhood-level winter risk, transparent model outputs, and policy-ready interpretation.</p>
+      </div>
+      <nav class="actions" aria-label="Primary links">
         <a class="btn primary" href="/docs">Open API Docs</a>
         <a class="btn" href="/health">Health</a>
         <a class="btn" href="/api/info">Metadata</a>
-      </div>
-    </section>
+      </nav>
+    </header>
 
-    <section class="grid">
-      <article class="card">
-        <h2>Scenario Input</h2>
-        <form id="predict-form" autocomplete="off">
+    <section class="layout">
+      <article class="panel map-panel">
+        <div class="map-frame">
+          <div id="map" role="region" aria-label="Risk map"></div>
+
+          <section class="map-legend" aria-label="Risk legend">
+            <h2>Neighborhood Risk</h2>
+            <div class="legend-row"><span class="swatch low"></span> Low</div>
+            <div class="legend-row"><span class="swatch medium"></span> Medium</div>
+            <div class="legend-row"><span class="swatch high"></span> High</div>
+            <div class="legend-row"><span class="swatch critical"></span> Critical</div>
+          </section>
+
+          <section class="map-overlays" aria-label="Overlay controls">
+            <h2>Overlays</h2>
+            <label><input id="toggle-sidewalks" type="checkbox" /> Sidewalk Network</label>
+            <label><input id="toggle-winter-routes" type="checkbox" /> Winter Routes</label>
+            <label><input id="toggle-trail-closures" type="checkbox" /> Trail Closures</label>
+            <label><input id="toggle-elevation-spots" type="checkbox" /> Elevation Spots</label>
+          </section>
+
+          <section class="map-context" aria-live="polite">
+            <h2>Selected Neighborhood</h2>
+            <p class="context-line"><strong>Name:</strong> <span id="selected-neighborhood-name">None</span></p>
+            <p id="selected-neighborhood-risk" class="context-line">Hover or click a neighborhood to inspect risk details.</p>
+          </section>
+
+          <section class="map-timeline" aria-label="Timeline controls">
+            <div class="timeline-head">
+              <p class="timeline-title">24h timeline sweep</p>
+              <button id="timeline-play" class="btn" type="button">Play 24h</button>
+            </div>
+            <div class="timeline-row">
+              <span>Now</span>
+              <input id="hour-offset" type="range" min="0" max="23" value="0" />
+              <output id="hour-offset-label" for="hour-offset">+0h</output>
+            </div>
+          </section>
+        </div>
+
+        <div class="map-footer">
+          <section class="subpanel" aria-live="polite">
+            <h3>Top 3 Risk Neighborhoods</h3>
+            <ul id="top-risk-list">
+              <li>Loading neighborhood risk rankings...</li>
+            </ul>
+          </section>
+          <section class="subpanel">
+            <h3>Map Config</h3>
+            <p id="map-config-summary">Loading dataset IDs...</p>
+            <details>
+              <summary>Show raw map layer payload</summary>
+              <pre id="map-raw-output" class="codebox">{}</pre>
+            </details>
+          </section>
+        </div>
+      </article>
+
+      <aside class="panel side-panel">
+        <section class="card">
+          <h2>Scenario Controls</h2>
           <div class="form-grid">
             <div class="full">
               <label for="token">Demo Token</label>
               <input id="token" type="password" placeholder="Paste DEMO_API_TOKEN once" />
             </div>
-
             <div>
               <label for="temperature">Temperature (C)</label>
-              <input id="temperature" type="number" step="0.1" value="-15.5" required />
+              <input id="temperature" type="number" step="0.1" value="-15.5" />
             </div>
             <div>
               <label for="wind_speed">Wind Speed (km/h)</label>
-              <input id="wind_speed" type="number" step="0.1" value="25" required />
+              <input id="wind_speed" type="number" step="0.1" value="25" />
             </div>
             <div>
               <label for="wind_chill">Wind Chill (C)</label>
-              <input id="wind_chill" type="number" step="0.1" value="-28" required />
+              <input id="wind_chill" type="number" step="0.1" value="-28" />
             </div>
             <div>
               <label for="precipitation">Precipitation (mm)</label>
-              <input id="precipitation" type="number" step="0.1" value="2.5" required />
+              <input id="precipitation" type="number" step="0.1" value="2.5" />
             </div>
             <div>
               <label for="snow_depth">Snow Depth (cm)</label>
-              <input id="snow_depth" type="number" step="0.1" value="30" required />
+              <input id="snow_depth" type="number" step="0.1" value="30" />
             </div>
             <div>
-              <label for="hour">Hour (0-23)</label>
-              <input id="hour" type="number" min="0" max="23" value="8" required />
+              <label for="hour">Hour</label>
+              <input id="hour" type="number" min="0" max="23" value="8" />
             </div>
             <div>
-              <label for="day_of_week">Day Of Week (0=Mon)</label>
-              <input id="day_of_week" type="number" min="0" max="6" value="1" required />
+              <label for="day_of_week">Day Of Week</label>
+              <input id="day_of_week" type="number" min="0" max="6" value="1" />
             </div>
             <div>
               <label for="month">Month</label>
-              <input id="month" type="number" min="1" max="12" value="1" required />
+              <input id="month" type="number" min="1" max="12" value="1" />
             </div>
             <div class="full">
               <label for="neighborhood">Neighborhood</label>
-              <input id="neighborhood" type="text" value="Downtown" required />
+              <input id="neighborhood" type="text" value="Downtown" />
             </div>
             <div>
               <label for="ses_index">SES Index (0-1)</label>
-              <input id="ses_index" type="number" min="0" max="1" step="0.01" value="0.45" required />
+              <input id="ses_index" type="number" min="0" max="1" step="0.01" value="0.45" />
             </div>
             <div>
               <label for="infrastructure_quality">Infrastructure Quality (0-1)</label>
-              <input id="infrastructure_quality" type="number" min="0" max="1" step="0.01" value="0.70" required />
+              <input id="infrastructure_quality" type="number" min="0" max="1" step="0.01" value="0.70" />
+            </div>
+          </div>
+          <div class="controls">
+            <button id="update-map" class="btn" type="button">Update Map</button>
+            <button id="load-commute-scenario" class="btn" type="button">Load Commute Scenario</button>
+            <button id="run-predict" class="btn primary" type="button">Run API Prediction</button>
+          </div>
+          <p id="status-text" class="status">Initializing map...</p>
+        </section>
+
+        <section class="card">
+          <h2>Safest Corridor</h2>
+          <div class="form-grid">
+            <div class="full">
+              <label for="route-from-neighborhood">From Neighborhood</label>
+              <select id="route-from-neighborhood">
+                <option value="">Select origin</option>
+              </select>
+            </div>
+            <div class="full">
+              <label for="route-to-neighborhood">To Neighborhood</label>
+              <select id="route-to-neighborhood">
+                <option value="">Select destination</option>
+              </select>
+            </div>
+            <div class="full">
+              <label for="compare-hour-offset">Compare Hour Offset</label>
+              <input id="compare-hour-offset" type="number" min="0" max="23" value="6" />
+            </div>
+          </div>
+          <div class="controls">
+            <button id="run-corridor-route" class="btn" type="button">Run Safest Corridor</button>
+            <button id="run-corridor-compare" class="btn" type="button">Compare Current vs Hour</button>
+          </div>
+          <p id="corridor-status" class="status">Choose start and end neighborhoods.</p>
+          <p id="corridor-summary" class="context-line">Corridor results will appear here after route computation.</p>
+          <p id="corridor-compare-summary" class="context-line">Compare mode summary will appear here.</p>
+          <ul id="corridor-hops" class="notes">
+            <li>Corridor hop ranks and risk levels will be listed here.</li>
+          </ul>
+          <details>
+            <summary>Show raw corridor response</summary>
+            <pre id="corridor-raw-output" class="codebox">{}</pre>
+          </details>
+        </section>
+
+        <section class="card">
+          <h2>Risk Interpretation</h2>
+          <span id="risk-pill" class="pill low">Awaiting Input</span>
+          <p id="result-hero" class="result-hero">Run API prediction to generate narrative guidance.</p>
+
+          <div class="meter-shell">
+            <div class="meter-track">
+              <div id="meter-fill" class="meter-fill"></div>
             </div>
           </div>
 
-          <div class="submit-row">
-            <button class="btn primary" type="submit">Run Risk Prediction</button>
-            <button class="btn" id="commute-scenario" type="button">Load Morning Commute Scenario</button>
-            <span id="status" class="status">Ready.</span>
+          <div class="risk-line">
+            <strong id="probability-label">Probability: --</strong>
+            <span id="prediction-label">Prediction: --</span>
           </div>
-        </form>
-      </article>
 
-      <article class="card">
-        <h2>Risk Interpretation</h2>
-        <div id="risk-pill" class="pill low">Awaiting Input</div>
-        <div id="result-hero" class="result-hero">Run a prediction to see risk guidance.</div>
+          <p id="narrative" class="context-line">Model guidance will appear after running /predict with bearer token auth.</p>
 
-        <div class="meter-shell">
-          <div class="meter-track">
-            <div id="meter-fill" class="meter-fill"></div>
-          </div>
-        </div>
+          <ul id="recommendations" class="notes">
+            <li>Use this as operational planning support, not clinical truth.</li>
+            <li>Compare map and API outputs for calibration transparency.</li>
+            <li>Validate with local observations before intervention.</li>
+          </ul>
 
-        <div class="risk-line">
-          <strong id="probability-label">Probability: --</strong>
-          <span id="prediction-label">Prediction: --</span>
-        </div>
-
-        <p id="narrative">
-          The model explanation will appear here in plain language.
-        </p>
-
-        <ul id="recommendations" class="list">
-          <li>Token required for prediction endpoint.</li>
-          <li>Use realistic weather and neighborhood context.</li>
-          <li>Interpret as a planning signal, not a clinical verdict.</li>
-        </ul>
-
-        <details>
-          <summary>Show Raw API Response</summary>
-          <pre id="raw-output" class="mono">{}</pre>
-        </details>
-      </article>
+          <details>
+            <summary>Show raw prediction response</summary>
+            <pre id="raw-output" class="codebox">{}</pre>
+          </details>
+        </section>
+      </aside>
     </section>
   </main>
 
-  <script>
-    const form = document.getElementById("predict-form");
-    const statusEl = document.getElementById("status");
-    const rawEl = document.getElementById("raw-output");
-    const pillEl = document.getElementById("risk-pill");
-    const heroEl = document.getElementById("result-hero");
-    const probEl = document.getElementById("probability-label");
-    const predEl = document.getElementById("prediction-label");
-    const narrativeEl = document.getElementById("narrative");
-    const recsEl = document.getElementById("recommendations");
-    const meterEl = document.getElementById("meter-fill");
-    const tokenInput = document.getElementById("token");
-    const commuteBtn = document.getElementById("commute-scenario");
-
-    const tokenKey = "winter_obs_demo_token";
-    const rememberedToken = window.localStorage.getItem(tokenKey);
-    if (rememberedToken) {
-      tokenInput.value = rememberedToken;
-    }
-
-    commuteBtn.addEventListener("click", () => {
-      document.getElementById("temperature").value = -12.2;
-      document.getElementById("wind_speed").value = 28;
-      document.getElementById("wind_chill").value = -24.0;
-      document.getElementById("precipitation").value = 1.8;
-      document.getElementById("snow_depth").value = 22;
-      document.getElementById("hour").value = 8;
-      document.getElementById("day_of_week").value = 1;
-      document.getElementById("month").value = 1;
-      document.getElementById("neighborhood").value = "Downtown";
-      document.getElementById("ses_index").value = 0.45;
-      document.getElementById("infrastructure_quality").value = 0.65;
-    });
-
-    function levelClass(level) {
-      const v = (level || "").toLowerCase();
-      if (["low", "medium", "high", "critical"].includes(v)) return v;
-      return "low";
-    }
-
-    function buildNarrative(payload, probability, level) {
-      const notes = [];
-      if (payload.temperature <= -15 || payload.wind_chill <= -25) {
-        notes.push("severe cold stress likely increases slip and reaction risk");
-      }
-      if (payload.precipitation >= 1.0) {
-        notes.push("active precipitation suggests unstable surface conditions");
-      }
-      if ([7, 8, 17, 18].includes(payload.hour)) {
-        notes.push("commute-hour exposure raises pedestrian and mobility pressure");
-      }
-      if (payload.infrastructure_quality < 0.6) {
-        notes.push("lower infrastructure quality increases vulnerability in this scenario");
-      }
-
-      const pct = (probability * 100).toFixed(1);
-      if (notes.length === 0) {
-        return `Estimated ${level} risk (${pct}%). Conditions are relatively stable, but continue monitoring for weather or traffic changes.`;
-      }
-      return `Estimated ${level} risk (${pct}%) because ${notes.join("; ")}.`;
-    }
-
-    function recommendations(level) {
-      switch ((level || "").toLowerCase()) {
-        case "critical":
-          return [
-            "Issue high-priority safety notice for exposed routes and transit nodes.",
-            "Increase salting/clearing operations on high-footfall corridors immediately.",
-            "Advise vulnerable groups to delay non-essential travel where possible."
-          ];
-        case "high":
-          return [
-            "Trigger targeted hazard messaging during peak movement periods.",
-            "Prioritize maintenance crews near schools, stations, and downtown crossings.",
-            "Increase patrol observation and report near-miss clusters rapidly."
-          ];
-        case "medium":
-          return [
-            "Maintain routine winter controls and monitor updated observations.",
-            "Push public reminders on footwear, pacing, and route caution.",
-            "Prepare escalation plan if precipitation or wind chill worsens."
-          ];
-        default:
-          return [
-            "Current risk is manageable under present conditions.",
-            "Continue baseline operations and passive monitoring.",
-            "Re-run forecast scenario if weather begins shifting quickly."
-          ];
-      }
-    }
-
-    function getPayload() {
-      return {
-        temperature: Number(document.getElementById("temperature").value),
-        wind_speed: Number(document.getElementById("wind_speed").value),
-        wind_chill: Number(document.getElementById("wind_chill").value),
-        precipitation: Number(document.getElementById("precipitation").value),
-        snow_depth: Number(document.getElementById("snow_depth").value),
-        hour: Number(document.getElementById("hour").value),
-        day_of_week: Number(document.getElementById("day_of_week").value),
-        month: Number(document.getElementById("month").value),
-        neighborhood: String(document.getElementById("neighborhood").value),
-        ses_index: Number(document.getElementById("ses_index").value),
-        infrastructure_quality: Number(document.getElementById("infrastructure_quality").value),
-      };
-    }
-
-    function setRecommendations(items) {
-      recsEl.innerHTML = "";
-      items.forEach((item) => {
-        const li = document.createElement("li");
-        li.textContent = item;
-        recsEl.appendChild(li);
-      });
-    }
-
-    async function runPrediction(event) {
-      event.preventDefault();
-      statusEl.textContent = "Calling /predict...";
-      statusEl.classList.remove("error");
-
-      const token = tokenInput.value.trim();
-      if (!token) {
-        statusEl.textContent = "Token required. Paste DEMO_API_TOKEN.";
-        statusEl.classList.add("error");
-        return;
-      }
-      window.localStorage.setItem(tokenKey, token);
-
-      const payload = getPayload();
-      try {
-        const response = await fetch("/predict", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
-          },
-          body: JSON.stringify(payload),
-        });
-
-        const data = await response.json();
-        rawEl.textContent = JSON.stringify(data, null, 2);
-
-        if (!response.ok) {
-          statusEl.textContent = `Request failed (${response.status}): ${data.detail || "unknown error"}`;
-          statusEl.classList.add("error");
-          return;
-        }
-
-        const probability = Number(data.probability || 0);
-        const level = String(data.risk_level || "low");
-        const cls = levelClass(level);
-        const pct = Math.max(0, Math.min(100, probability * 100));
-
-        pillEl.className = `pill ${cls}`;
-        pillEl.textContent = `${level} risk`;
-        heroEl.textContent = `${level.toUpperCase()} RISK`;
-        probEl.textContent = `Probability: ${pct.toFixed(1)}%`;
-        predEl.textContent = `Prediction: ${data.prediction}`;
-        meterEl.style.width = `${pct}%`;
-        narrativeEl.textContent = buildNarrative(payload, probability, level);
-        setRecommendations(recommendations(level));
-
-        statusEl.textContent = "Prediction complete.";
-      } catch (error) {
-        statusEl.textContent = `Network error: ${error.message}`;
-        statusEl.classList.add("error");
-      }
-    }
-
-    form.addEventListener("submit", runPrediction);
-  </script>
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
+  <script type="module" src="/static/js/map-app.js"></script>
 </body>
 </html>
