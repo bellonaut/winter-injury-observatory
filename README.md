@@ -12,6 +12,12 @@ This repository is optimized for recruiter review: reproducible startup, determi
 - Training and pipeline modules: `ml_pipeline/`, `dagster_project/`
 - Infra-as-code (documented path): `terraform/`
 
+## Frontend Map Stack
+
+- Map engine: `MapLibre GL JS` loaded via CDN for static frontend compatibility.
+- Spatial utilities: `Turf.js` loaded via CDN for client-side map calculations.
+- No frontend build step required for deployment on the current single Render service.
+
 ## Live Demo
 
 - Landing page: `https://<your-render-service>.onrender.com/`

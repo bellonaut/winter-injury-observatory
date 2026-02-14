@@ -1,4 +1,4 @@
-.PHONY: help install install-runtime dev test lint clean build deploy build-demo-model smoke
+.PHONY: help install install-runtime dev test lint clean build deploy build-demo-model smoke smoke-map
 
 help:
 	@echo "Available commands:"
@@ -8,6 +8,7 @@ help:
 	@echo "  make dev              - Start development environment"
 	@echo "  make test             - Run all tests"
 	@echo "  make smoke            - Run smoke tests"
+	@echo "  make smoke-map        - Run map endpoint smoke tests"
 	@echo "  make lint             - Run linters"
 	@echo "  make clean            - Clean temporary files"
 	@echo "  make build            - Build Docker images"
@@ -36,6 +37,9 @@ test:
 
 smoke:
 	pytest tests/smoke -v
+
+smoke-map:
+	pytest tests/smoke/test_map_smoke.py -v
 
 lint:
 	black api/ ml_pipeline/ dagster_project/
